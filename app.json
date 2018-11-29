@@ -1,0 +1,14 @@
+{
+  "name": "MailBoox",
+  "description": "A distributed liberary, facilitated by your personal mailbox.",
+  "authors": [
+    {
+      "identifier": "Viktor <viktor@rekobyn.se>",
+      "public_key_source": "",
+      "signature": ""
+    }
+  ],
+  "version": "0.1.0",
+  "dht": {},
+  "properties": null
+}
