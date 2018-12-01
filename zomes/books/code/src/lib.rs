@@ -37,7 +37,7 @@ struct Book {
 
 #[derive(Serialize, Deserialize, Debug, DefaultJson)]
 struct Collection {
-    name: String
+    name: String,
 }
 
 define_zome! {
@@ -87,12 +87,12 @@ define_zome! {
     functions: {
         main (Public) {
             create_book: {
-                inputs: |book: Book|,
+                inputs: |name: String, author: String, genre: String, blurb: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_book
             }
             create_collection: {
-                inputs: |collection: Collection|,
+                inputs: |name: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_collection
             }
@@ -123,7 +123,7 @@ define_zome! {
     }
 }
 
-fn handle_create_book(name: String, author: String, genre: String, blurb: String, owner: Address) -> JsonString {
+fn handle_create_book(name: String, author: String, genre: String, blurb: String) -> JsonString {
         let maybe_added = Entry::new(EntryType::App("book".into()), Book {
             name, author, genre, blurb
         });
