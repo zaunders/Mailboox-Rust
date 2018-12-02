@@ -296,6 +296,20 @@ fn handle_add_book_to_collection(book_address: Address, collection_address: Addr
     }
 }
 */
+
+fn handle_add_book_to_collection(book_address: Address, collection_address: Address) -> JsonString {
+    match hdk::link_entries(&book_address, &collection_address, "is in collection")
+        .and_then(|result| {
+            hdk::link_entries(&collection_address, &book_address, "includes book")
+        })
+    
+    {
+        Ok(_link_address) => json!({"success": true}).into(),
+        Err(hdk_error) => hdk_error.into(),
+    }
+}
+
+/*
 fn handle_add_book_to_collection(base: Address, target: Address, tag: String) -> JsonString {
     match hdk::link_entries(
         &base, 
@@ -306,6 +320,9 @@ fn handle_add_book_to_collection(base: Address, target: Address, tag: String) ->
             Err(hdk_error) => hdk_error.into(),
         }
 }
+*/
+
+
 
 
 fn handle_get_books_in_collection(collection_address: Address, tag: String) -> JsonString {
