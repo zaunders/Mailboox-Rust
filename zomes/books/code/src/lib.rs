@@ -11,6 +11,7 @@ extern crate holochain_core_types;
 extern crate holochain_core_types_derive;
 extern crate boolinator;
 
+use hdk::error::ZomeApiResult;
 use boolinator::Boolinator;
 use hdk::{
     holochain_core_types::{
@@ -39,10 +40,45 @@ struct Book {
 struct Collection {
     name: String,
 }
+#[derive(Serialize, Deserialize, Debug, DefaultJson)]
+struct User {
+    name: String,
+    street: String,
+    zip: String,
+    city: String,
+    country: String,
+}
 
 define_zome! {
 
     entries: [
+        entry!(
+			name: "anchor",
+	        description: "",
+	        sharing: Sharing::Public,
+	        native_type: String,
+	        validation_package: || {
+	            hdk::ValidationPackageDefinition::Entry
+	        },
+	        validation: |name: String, _ctx: hdk::ValidationData| {
+	        	Ok(())
+	        },
+
+	        links: [
+	        	to!(
+	        		"shelf",
+	        		tag: "in shelf",
+
+	                validation_package: || {
+	                    hdk::ValidationPackageDefinition::Entry
+	                },
+
+	                validation: |_base: Address, _target: Address, _ctx: hdk::ValidationData| {
+	                    Ok(())
+	                }
+	        	)
+	        ]
+		),
         entry!(
             name: "book",
             description: "a book",
@@ -76,9 +112,47 @@ define_zome! {
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
                     }
-                )
+                ),
+                from!(
+	        		"shelf",
+	        		tag: "in shelf",
+	                validation_package: || {hdk::ValidationPackageDefinition::Entry },
+                    validation: |_base: Address, _target: Address, _ctx: hdk::ValidationData| {
+	                    Ok(())
+	                }
+	        	)
             ]
 
+        ),
+        entry!(
+            name: "collection",
+            description: "a collection of books",
+            sharing: Sharing::Public,
+            native_type: Collection,
+            validation_package: || hdk::ValidationPackageDefinition::Entry,
+            validation: |collection: Collection, _ctx: hdk::ValidationData| {
+                Ok(())
+            }
+        ),
+        entry!(
+            name: "user",
+            description: "an app user",
+            sharing: Sharing::Public,
+            native_type: User,
+            validation_package: || hdk::ValidationPackageDefinition::Entry,
+            validation: |collection: Collection, _ctx: hdk::ValidationData| {
+                Ok(())
+            },
+            links: [
+              to! (
+                    "favoriteBook",
+                    tag: "favorite",
+                    validation_package: || hdk::ValidationPackageDefinition::Entry,
+                    validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
+                        Ok(())
+                    }
+                )  
+            ]
         )
     ]
 
@@ -86,8 +160,13 @@ define_zome! {
 
     functions: {
         main (Public) {
+            init: {
+				inputs: | |,
+				outputs: |result: JsonString|,
+				handler: handle_init
+			}
             create_book: {
-                inputs: |name: String, author: String, genre: String, blurb: String|,
+                inputs: |name: String, author: String, genre: String, blurb: String, shelf: Address|,
                 outputs: |result: JsonString|,
                 handler: handle_create_book
             }
@@ -95,6 +174,16 @@ define_zome! {
                 inputs: |name: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_collection
+            }
+            create_user: {
+                inputs: |name: String, street: String, zip: String, city: String, country: String|,
+                outputs: |result: JsonString|,
+                handler: handle_create_user
+            }
+            get_book: {
+                inputs: |address: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_get_book
             }
             //retrieve all books (?)
             /*get_books: {
@@ -123,18 +212,22 @@ define_zome! {
     }
 }
 
-fn handle_create_book(name: String, author: String, genre: String, blurb: String) -> JsonString {
+fn handle_create_book(name: String, author: String, genre: String, blurb: String, shelf: Address) -> JsonString {
         let maybe_added = Entry::new(EntryType::App("book".into()), Book {
             name, author, genre, blurb
         });
         match hdk::commit_entry(&maybe_added) {
-            Ok(address) => json!({"address": address}).into(),
+            Ok(address) => match hdk::link_entries(&shelf, &address, "in shelf") {
+                Ok(_) => json!({ "address": address }).into(),
+                Err(hdk_err) => hdk_err.into(),
+            },
             Err(hdk_err) => hdk_err.into()
         }
 }
 
+
 fn handle_create_collection(name: String) -> JsonString {
-        let maybe_added = Entry::new(EntryType::App("collecition".into()), Collection {
+        let maybe_added = Entry::new(EntryType::App("collection".into()), Collection {
             name,
         });
         match hdk::commit_entry(&maybe_added) {
@@ -142,4 +235,31 @@ fn handle_create_collection(name: String) -> JsonString {
             Err(hdk_err) => hdk_err.into()
         }
 }
+fn handle_create_user(name: String, street: String, zip: String, city: String, country: String,) -> JsonString {
+    let maybe_added = Entry::new(EntryType::App("user".into()), User {name, street, zip, city, country});
+    match hdk::commit_entry(&maybe_added) {
+        Ok(address) => json!({"address": address}).into(),
+        Err(hdk_err) => hdk_err.into()
+    }
+}
+fn handle_get_book(address: Address) -> JsonString {
+     match hdk::get_entry(address) {
+        Ok(maybe_book) => maybe_book.and_then(|entry| Some(entry.serialize())).into(),
+        Err(e) => e.into(),
+    }
+}
+/*fn handle_init() -> JsonString {
+    match run_init() {
+    	Ok(()) => json!({"success": true}).into(),
+    	Err(hdk_err) => hdk_err.into()
+    }
+}*/
+
+ fn handle_init() -> JsonString {
+	let anchor_entry = Entry::new(EntryType::App("anchor".into()), json!("bookshelf"));
+	match hdk::commit_entry(&anchor_entry) {
+        Ok(address) => json!({"address": address}).into(),
+        Err(hdk_err) => hdk_err.into()
+    }
+ }
 
