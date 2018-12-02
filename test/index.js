@@ -9,25 +9,28 @@ const app = Container.loadAndInstantiate("dist/bundle.json")
 // activate the new instance
 app.start()
 
-test('description of example test', (t) => {
-  // Make a call to a Zome function
-  // indicating the capability and function, and passing it an input
-  // const result = app.call("zome-name", "capability-name", "function-name", {})
-
-  // check for equality of the actual and expected results
-  // t.equal(result, "expected result!")
-
-  // ends this test
-  t.end()
-})
-
+const bookClimateAddress = "QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8"
+const collectionLearningAddress = "QmUcZSjYzsFQNRYsVH4NQhhjF3FNEFEosHE4isxSNHPwMg"
 const bookshelf = "QmdRvAfumSyggTi149xsyiUDbFXPaHtByYuyxCCwYrvkuu"
+const viktorAddress = "QmVkSK5TmPdzGjKUkBBwqrxtcjQ1wA9Ze3a2YSzPU8gxEG"
+
 test('initialize application', (t) => {
   const result = app.call("books", "main", "init", {})
   t.deepEqual(result, {address: bookshelf})
   t.end()
 })
 
+test('create a book', (t) => {
+  const result = app.call("books", "main", "create_book", { 
+    name: "Climate - a new story",
+    author: "Charles Eisenstein",
+    genre: "Education",
+    blurb: "A thriving biosphere through regeneration of ecosystems"})
+  t.deepEqual(result, { address: bookClimateAddress })
+  t.end()
+})
+
+/* test with link to shelf
 //const bookAddress = "QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8"
 const bookshelfLinkAddress = "QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8"
 test('create a book', (t) => {
@@ -39,16 +42,15 @@ test('create a book', (t) => {
     shelf: "QmdRvAfumSyggTi149xsyiUDbFXPaHtByYuyxCCwYrvkuu"})
   t.deepEqual(result, { address: bookshelfLinkAddress })
   t.end()
-})
+})*/
 
-const collectionAddress = "QmUcZSjYzsFQNRYsVH4NQhhjF3FNEFEosHE4isxSNHPwMg"
 test('create a collection', (t) => {
   const result = app.call("books", "main", "create_collection", { name: "Learning"})
-  t.deepEqual(result, {address: collectionAddress})
+  t.deepEqual(result, {address: collectionLearningAddress})
   t.end()
 })
 
-const userAddress = "QmVkSK5TmPdzGjKUkBBwqrxtcjQ1wA9Ze3a2YSzPU8gxEG"
+
 test('create a user', (t) => {
   const result = app.call("books", "main", "create_user", {
     name: "Viktor Z",
@@ -57,13 +59,13 @@ test('create a user', (t) => {
     city: "Röstånga",
     country: "Sweden",
   })
-  t.deepEqual(result, {address: userAddress})
+  t.deepEqual(result, {address: viktorAddress})
   t.end()
 })
 
-// bookAddress = "QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8"
+
 test('get a book', (t) => {
-  const result = app.call("books", "main", "get_book", {address: "QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8"})
+  const result = app.call("books", "main", "get_book", {address: bookClimateAddress})
   t.deepEqual(result, { value: '{"name":"Climate - a new story","author":"Charles Eisenstein","genre":"Education","blurb":"A thriving biosphere through regeneration of ecosystems"}', entry_type: 'book' })
   t.end()
 })
@@ -74,3 +76,46 @@ test('retrieve a list of all books in dht', (t) => {
   t.end()
 })
 */
+
+/*
+test('add book to collection', (t) => {
+  const result = app.call("books", "main", "add_book_to_collection", {
+    book_address: bookClimateAddress, 
+    collection_address: collectionLearningAddress})
+  t.deepEqual(result, { success: true })
+  t.end()
+})
+*/
+
+
+test('add book to collection', (t) => {
+  const result = app.call("books", "main", "add_book_to_collection", {
+    base: collectionLearningAddress,
+    target: bookClimateAddress,
+    tag: "includes book"
+  })
+  const result2 = app.call("books", "main", "add_book_to_collection", {
+    base: bookClimateAddress,
+    target: collectionLearningAddress,
+    tag: "is in collection"
+  })
+  t.deepEqual(result2, { success: true })
+  t.end()
+})
+
+test('get books in collection', (t) => {
+  const result = app.call("books", "main", "get_books_in_collection", {
+    collection_address: collectionLearningAddress, 
+    tag: "includes book"})
+  t.deepEqual(result, { addresses: [ 'QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8' ] })
+  t.end()
+})
+
+test('get collections that book is in', (t) => {
+  const result = app.call("books", "main", "get_collections_book_is_in", {
+    book_address: bookClimateAddress,
+    tag: "is in collection"
+  })
+  t.deepEqual(result, { addresses: [ 'QmUcZSjYzsFQNRYsVH4NQhhjF3FNEFEosHE4isxSNHPwMg' ] })
+  t.end()
+})

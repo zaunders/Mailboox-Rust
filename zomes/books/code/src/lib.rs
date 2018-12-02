@@ -11,8 +11,7 @@ extern crate holochain_core_types;
 extern crate holochain_core_types_derive;
 extern crate boolinator;
 
-use hdk::error::ZomeApiResult;
-use boolinator::Boolinator;
+
 use hdk::{
     holochain_core_types::{
         dna::zome::entry_types::Sharing,
@@ -92,7 +91,7 @@ define_zome! {
                 ),
                 to! (
                     "collection",
-                    tag: "in collection",
+                    tag: "is in collection",
                     validation_package: || hdk::ValidationPackageDefinition::Entry,
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
@@ -117,7 +116,18 @@ define_zome! {
             validation_package: || hdk::ValidationPackageDefinition::Entry,
             validation: |collection: Collection, _ctx: hdk::ValidationData| {
                 Ok(())
-            }
+            },
+            links: [
+                to! (
+                    "book",
+                    tag: "includes book",
+                    validation_package: || hdk::ValidationPackageDefinition::Entry,
+                    validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
+                        Ok(())
+                    }
+                )
+            ]
+
         ),
         entry!(
             name: "user",
@@ -150,8 +160,14 @@ define_zome! {
 				outputs: |result: JsonString|,
 				handler: handle_init
 			}
+            /* create_book with shelf link
             create_book: {
                 inputs: |name: String, author: String, genre: String, blurb: String, shelf: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_create_book
+            }*/
+            create_book: {
+                inputs: |name: String, author: String, genre: String, blurb: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_book
             }
@@ -170,6 +186,21 @@ define_zome! {
                 outputs: |result: JsonString|,
                 handler: handle_get_book
             }
+            add_book_to_collection: {
+                inputs: |base: Address, target: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_add_book_to_collection
+            }
+            get_books_in_collection: {
+                inputs: |collection_address: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_get_books_in_collection
+            }
+            get_collections_book_is_in: {
+                inputs: |book_address: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_get_collections_book_is_in
+            }
             //retrieve all books (?)
             /*get_books: {
                 inputs: |???: ????|,
@@ -187,16 +218,22 @@ define_zome! {
                 inputs: |**: **|,
                 outputs: |result: JsonString|,
                 handler: handle_mark_book_returned
-            }
-            add_book_to_collection: {
-                inputs: |book: Book, collection: Collection|,
-                outputs: |result: JsonString|,
-                handler: handle_add_book_to_collection
             }*/
+
         }
     }
 }
+fn handle_create_book(name: String, author: String, genre: String, blurb: String) -> JsonString {
+        let maybe_added = Entry::new(EntryType::App("book".into()), Book {
+            name, author, genre, blurb
+        });
+        match hdk::commit_entry(&maybe_added) {
+            Ok(address) => json!({ "address": address }).into(),
+            Err(hdk_err) => hdk_err.into()
+        }
+}
 
+/* add link to shelf in create book function
 fn handle_create_book(name: String, author: String, genre: String, blurb: String, shelf: Address) -> JsonString {
         let maybe_added = Entry::new(EntryType::App("book".into()), Book {
             name, author, genre, blurb
@@ -209,7 +246,7 @@ fn handle_create_book(name: String, author: String, genre: String, blurb: String
             Err(hdk_err) => hdk_err.into()
         }
 }
-
+*/
 
 fn handle_create_collection(name: String) -> JsonString {
         let maybe_added = Entry::new(EntryType::App("collection".into()), Collection {
@@ -247,4 +284,43 @@ fn handle_get_book(address: Address) -> JsonString {
         Err(hdk_err) => hdk_err.into()
     }
  }
+/*
+fn handle_add_book_to_collection(book_address: Address, collection_address: Address) -> JsonString {
+    match hdk::link_entries(&bookAddress, &collectionAdress, "in collection"){
+            Ok(result) => result.into(),
+            Err(e) => e.into()
+    }
+    match hdk::link_entries(&collection_address, &book_address, "has book"){
+            Ok(result) => result.into(),
+            Err(e) => e.into()
+    }
+}
+*/
+fn handle_add_book_to_collection(base: Address, target: Address, tag: String) -> JsonString {
+    match hdk::link_entries(
+        &base, 
+        &target, 
+        tag)
+        {
+            Ok(_link_address) => json!({"success": true}).into(),
+            Err(hdk_error) => hdk_error.into(),
+        }
+}
 
+
+fn handle_get_books_in_collection(collection_address: Address, tag: String) -> JsonString {
+    match hdk::get_links(&collection_address, tag)
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into(),
+    }
+
+}
+
+fn handle_get_collections_book_is_in (book_address: Address, tag: String) -> JsonString {
+    match hdk::get_links(&book_address, tag)
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into()
+    }
+}
