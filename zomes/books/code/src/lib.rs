@@ -102,7 +102,7 @@ define_zome! {
                 ),
                 to! (
                     "collection",
-                    tag: "is in collection",
+                    tag: "in collection",
                     validation_package: || hdk::ValidationPackageDefinition::Entry,
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
@@ -123,7 +123,7 @@ define_zome! {
             links: [
                 to! (
                     "book",
-                    tag: "includes book",
+                    tag: "has book",
                     validation_package: || hdk::ValidationPackageDefinition::Entry,
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
@@ -187,7 +187,7 @@ define_zome! {
                 handler: handle_create_user
             }
             link_book_to_owner: {
-                inputs: |base: Address, target: Address, tag: String|,
+                inputs: |book_address: Address, owner_address: Address|,
                 outputs: |result: JsonString|,
                 handler: handle_link_book_to_owner
             }
@@ -197,10 +197,22 @@ define_zome! {
                 handler: handle_get_book
             }
             add_book_to_collection: {
+                inputs: |book_address: Address, collection_address: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_add_book_to_collection
+            }
+            add_book_to_shelf: {
+                inputs: |base: Address, target: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_add_book_to_shelf
+            }
+            /*
+            add_book_to_collection: {
                 inputs: |base: Address, target: Address, tag: String|,
                 outputs: |result: JsonString|,
                 handler: handle_add_book_to_collection
             }
+            */
             get_books_in_collection: {
                 inputs: |collection_address: Address, tag: String|,
                 outputs: |result: JsonString|,
@@ -301,21 +313,34 @@ fn handle_get_book(address: Address) -> JsonString {
         Err(hdk_err) => hdk_err.into()
     }
  }
-/*
+
+
+
 fn handle_add_book_to_collection(book_address: Address, collection_address: Address) -> JsonString {
-    match hdk::link_entries(&bookAddress, &collectionAdress, "in collection"){
-            Ok(result) => result.into(),
-            Err(e) => e.into()
-    }
-    match hdk::link_entries(&collection_address, &book_address, "has book"){
-            Ok(result) => result.into(),
-            Err(e) => e.into()
+    match (
+        hdk::link_entries(&book_address, &collection_address, "in collection"),
+	    hdk::link_entries(&collection_address, &book_address, "has book")
+    ) {
+        (Ok(_result),Ok(_result2)) => json!({"success": true}).into(),
+        (Err(err1), Err(_)) => err1.into(),
+		(Ok(_), Err(err2)) => err2.into(),
+        (Err(err1), Ok(_)) => err1.into()
     }
 }
-*/
 
-//redundant functions for readable code, needs change...
-fn handle_link_book_to_owner(base: Address, target: Address, tag: String) -> JsonString {
+fn handle_link_book_to_owner(book_address: Address, owner_address: Address) -> JsonString {
+    match (
+        hdk::link_entries(&book_address, &owner_address, "owned by"),
+	    hdk::link_entries(&owner_address, &book_address, "owns")
+    ) {
+        (Ok(_result),Ok(_result2)) => json!({"success": true}).into(),
+        (Err(err1), Err(_)) => err1.into(),
+		(Ok(_), Err(err2)) => err2.into(),
+        (Err(err1), Ok(_)) => err1.into()
+    }
+}
+
+fn handle_add_book_to_shelf(base: Address, target: Address, tag: String) -> JsonString {
     match hdk::link_entries(
         &base, 
         &target, 
@@ -325,20 +350,6 @@ fn handle_link_book_to_owner(base: Address, target: Address, tag: String) -> Jso
             Err(hdk_error) => hdk_error.into(),
         }
 }
-
-
-
-fn handle_add_book_to_collection(base: Address, target: Address, tag: String) -> JsonString {
-    match hdk::link_entries(
-        &base, 
-        &target, 
-        tag)
-        {
-            Ok(_link_address) => json!({"success": true}).into(),
-            Err(hdk_error) => hdk_error.into(),
-        }
-}
-
 
 fn handle_get_books_in_collection(collection_address: Address, tag: String) -> JsonString {
     match hdk::get_links(&collection_address, tag)
@@ -348,6 +359,8 @@ fn handle_get_books_in_collection(collection_address: Address, tag: String) -> J
     }
 
 }
+
+
 
 fn handle_get_collections_book_is_in (book_address: Address, tag: String) -> JsonString {
     match hdk::get_links(&book_address, tag)

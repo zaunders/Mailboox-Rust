@@ -29,7 +29,7 @@ test('create a book', (t) => {
   t.deepEqual(result, { address: bookClimateAddress })
 
   //unable to add the linking to shelf as main anchor for all books in the create_book function
-  const result2 = app.call("books", "main", "add_book_to_collection", {
+  const result2 = app.call("books", "main", "add_book_to_shelf", {
     base: bookshelf,
     target: bookClimateAddress,
     tag: "in shelf"
@@ -68,16 +68,10 @@ test('create a user', (t) => {
 //should really just be one function without passing tags...
 test('link book to owner', (t) => {
   const result = app.call("books", "main", "link_book_to_owner", {
-    base: viktorAddress,
-    target: bookClimateAddress,
-    tag: "owns"
+    book_address: bookClimateAddress,
+    owner_address: viktorAddress
   })
-  const result2 = app.call("books", "main", "link_book_to_owner", {
-    base: bookClimateAddress,
-    target: viktorAddress,
-    tag: "owned by"
-  })
-  t.deepEqual(result2, { success: true })
+  t.deepEqual(result, { success: true })
   t.end()
 })
 
@@ -108,7 +102,7 @@ test('retrieve a list of all books in dht', (t) => {
 })
 
 
-/* should be able to just call the function and set up bi-directional links between books and collections..
+// should be able to just call the function and set up bi-directional links between books and collections..
 test('add book to collection', (t) => {
   const result = app.call("books", "main", "add_book_to_collection", {
     book_address: bookClimateAddress, 
@@ -116,8 +110,8 @@ test('add book to collection', (t) => {
   t.deepEqual(result, { success: true })
   t.end()
 })
-*/
 
+/*
 //should really just be one function without passing tags...
 test('add book to collection', (t) => {
   const result = app.call("books", "main", "add_book_to_collection", {
@@ -133,11 +127,11 @@ test('add book to collection', (t) => {
   t.deepEqual(result2, { success: true })
   t.end()
 })
-
+*/
 test('get books in collection', (t) => {
   const result = app.call("books", "main", "get_books_in_collection", {
     collection_address: collectionLearningAddress, 
-    tag: "includes book"})
+    tag: "has book"})
   t.deepEqual(result, { addresses: [ 'QmNgH7iApZXnWwBnTcufXjQB61Y6uhQHLTT6wrdXFanBt8' ] })
   t.end()
 })
@@ -145,7 +139,7 @@ test('get books in collection', (t) => {
 test('get collections that book is in', (t) => {
   const result = app.call("books", "main", "get_collections_book_is_in", {
     book_address: bookClimateAddress,
-    tag: "is in collection"
+    tag: "in collection"
   })
   t.deepEqual(result, { addresses: [ 'QmUcZSjYzsFQNRYsVH4NQhhjF3FNEFEosHE4isxSNHPwMg' ] })
   t.end()
