@@ -62,22 +62,7 @@ define_zome! {
 	        },
 	        validation: |name: String, _ctx: hdk::ValidationData| {
 	        	Ok(())
-	        },
-
-	        links: [
-	        	to!(
-	        		"shelf",
-	        		tag: "in shelf",
-
-	                validation_package: || {
-	                    hdk::ValidationPackageDefinition::Entry
-	                },
-
-	                validation: |_base: Address, _target: Address, _ctx: hdk::ValidationData| {
-	                    Ok(())
-	                }
-	        	)
-	        ]
+	        }
 		),
         entry!(
             name: "book",
