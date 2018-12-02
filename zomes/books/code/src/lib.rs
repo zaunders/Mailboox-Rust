@@ -1,3 +1,4 @@
+
 #![feature(try_from)]
 #[macro_use]
 extern crate hdk;
@@ -61,7 +62,17 @@ define_zome! {
 	        },
 	        validation: |name: String, _ctx: hdk::ValidationData| {
 	        	Ok(())
-	        }
+	        },
+            links: [
+                to!(
+	        		"book",
+	        		tag: "in shelf",
+	                validation_package: || {hdk::ValidationPackageDefinition::Entry },
+                    validation: |_base: Address, _target: Address, _ctx: hdk::ValidationData| {
+	                    Ok(())
+	                }
+	        	)
+            ]
 		),
         entry!(
             name: "book",
@@ -74,8 +85,8 @@ define_zome! {
             },
             links: [
                 to! (
-                    "bookOwner",
-                    tag: "owner",
+                    "user",
+                    tag: "owned by",
                     validation_package: || hdk::ValidationPackageDefinition::Entry,
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
@@ -96,15 +107,7 @@ define_zome! {
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
                     }
-                ),
-                from!(
-	        		"shelf",
-	        		tag: "in shelf",
-	                validation_package: || {hdk::ValidationPackageDefinition::Entry },
-                    validation: |_base: Address, _target: Address, _ctx: hdk::ValidationData| {
-	                    Ok(())
-	                }
-	        	)
+                )
             ]
 
         ),
@@ -146,6 +149,14 @@ define_zome! {
                     validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
                         Ok(())
                     }
+                ),
+                to! (
+                    "book",
+                    tag: "owns",
+                    validation_package: || hdk::ValidationPackageDefinition::Entry,
+                    validation: |base: Address, target: Address, _ctx: hdk::ValidationData| {
+                        Ok(())
+                    }
                 )  
             ]
         )
@@ -160,12 +171,6 @@ define_zome! {
 				outputs: |result: JsonString|,
 				handler: handle_init
 			}
-            /* create_book with shelf link
-            create_book: {
-                inputs: |name: String, author: String, genre: String, blurb: String, shelf: Address|,
-                outputs: |result: JsonString|,
-                handler: handle_create_book
-            }*/
             create_book: {
                 inputs: |name: String, author: String, genre: String, blurb: String|,
                 outputs: |result: JsonString|,
@@ -180,6 +185,11 @@ define_zome! {
                 inputs: |name: String, street: String, zip: String, city: String, country: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_user
+            }
+            link_book_to_owner: {
+                inputs: |base: Address, target: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_link_book_to_owner
             }
             get_book: {
                 inputs: |address: Address|,
@@ -201,12 +211,19 @@ define_zome! {
                 outputs: |result: JsonString|,
                 handler: handle_get_collections_book_is_in
             }
-            //retrieve all books (?)
-            /*get_books: {
-                inputs: |???: ????|,
+            //retrieve all books linked to the anchor shelf
+            get_books: {
+                inputs: |shelf_address: Address, tag: String|,
                 outputs: |result: JsonString|,
                 handler: handle_get_books
-            }request_to_borrow: {
+            }
+            get_owners: {
+                inputs: |book_address: Address, tag: String|,
+                outputs: |result: JsonString|,
+                handler: handle_get_owners
+            }
+            /*
+            request_to_borrow: {
                 inputs: |**: **|,
                 outputs: |result: JsonString|,
                 handler: handle_request_to_borrow
@@ -296,6 +313,21 @@ fn handle_add_book_to_collection(book_address: Address, collection_address: Addr
     }
 }
 */
+
+//redundant functions for readable code, needs change...
+fn handle_link_book_to_owner(base: Address, target: Address, tag: String) -> JsonString {
+    match hdk::link_entries(
+        &base, 
+        &target, 
+        tag)
+        {
+            Ok(_link_address) => json!({"success": true}).into(),
+            Err(hdk_error) => hdk_error.into(),
+        }
+}
+
+
+
 fn handle_add_book_to_collection(base: Address, target: Address, tag: String) -> JsonString {
     match hdk::link_entries(
         &base, 
@@ -324,3 +356,20 @@ fn handle_get_collections_book_is_in (book_address: Address, tag: String) -> Jso
         Err(hdk_error) => hdk_error.into()
     }
 }
+
+fn handle_get_books(shelf_address: Address, tag: String) -> JsonString {
+        match hdk::get_links(&shelf_address, tag)
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into()
+    }
+}
+
+fn handle_get_owners(book_address: Address, tag: String) -> JsonString {
+        match hdk::get_links(&book_address, tag)
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into()
+    }
+}
+
