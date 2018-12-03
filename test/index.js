@@ -14,6 +14,23 @@ const collectionLearningAddress = "QmUcZSjYzsFQNRYsVH4NQhhjF3FNEFEosHE4isxSNHPwM
 const bookshelf = "QmdRvAfumSyggTi149xsyiUDbFXPaHtByYuyxCCwYrvkuu"
 const viktorAddress = "QmVkSK5TmPdzGjKUkBBwqrxtcjQ1wA9Ze3a2YSzPU8gxEG"
 
+const user1inputParams = {
+  name: "Viktor Z",
+  street: "Backavägen 8",
+  zip: "26868",
+  city: "Röstånga",
+  country: "Sweden",
+}
+const user2inputParams = {
+  name: "Joe smith",
+  street: "Pineforest drive",
+  zip: "56748",
+  city: "London",
+  country: "England",
+}
+
+
+
 test('initialize application', (t) => {
   const result = app.call("books", "main", "init", {})
   t.deepEqual(result, {address: bookshelf})
@@ -21,13 +38,7 @@ test('initialize application', (t) => {
 })
 
 test('create a user', (t) => {
-  const result = app.call("books", "main", "create_user", {
-    name: "Viktor Z",
-    street: "Backavägen 8",
-    zip: "26868",
-    city: "Röstånga",
-    country: "Sweden",
-  })
+  const result = app.call("books", "main", "create_user", user1inputParams)
   t.deepEqual(result, {address: viktorAddress})
   t.end()
 })
@@ -47,26 +58,6 @@ test('create a book', (t) => {
   t.end()
 })
 
-/*deprecieated, now owner is included in the book entry, reduncancy and 
-multiple copies will have to be handled in the front end
-
-test('link book to owner', (t) => {
-  const result = app.call("books", "main", "link_book_to_owner", {
-    book_address: bookClimateAddress,
-    owner_address: viktorAddress
-  })
-  t.deepEqual(result, { success: true })
-  t.end()
-})
-
-
-//a link between book and owner instansiates a copy that can be borrowed
-test('get owners of book', (t) => {
-  const result = app.call("books", "main", "get_owners", {book_address: bookClimateAddress, tag: "owned by"})
-  t.deepEqual(result, { addresses: [ 'QmVkSK5TmPdzGjKUkBBwqrxtcjQ1wA9Ze3a2YSzPU8gxEG' ] })
-  t.end()
-})
-*/
 test('create a book collection', (t) => {
   const result = app.call("books", "main", "create_collection", { name: "Learning"})
   t.deepEqual(result, {address: collectionLearningAddress})
@@ -119,29 +110,12 @@ test('get collections that book is in', (t) => {
   t.end()
 })
 
-/* not implemented functionally, can we just use entry metadata stamping?
-test('get current user address', (t) => {
-  const current_user = app.call("books", "main", "get_current_user_address", {})
-  t.deepEqual(result, {address: bookshelf})
-  t.end()
-})*/
-
 //Requesting to borrow should be implemented as SEND message, when available, request data does not need to be in the DHT 
 //Now app needs to check it's agents user entry for each "owns" link, check for "is requested by" links, connected to each of those links
 //requests can then be turned into loan entries, which can be marked deleted when returned
 test('requst to borrow', (t) => {
   //create additional user that can borrow
-  const borrower = app.call("books", "main", "create_user", {
-    name: "Joe smith",
-    street: "Pineforest drive",
-    zip: "56748",
-    city: "London",
-    country: "England",
-  })
-  const newUser = app.call("books", "main", "get_user_data", {address: borrower.address})
-  console.log(newUser)
-
-
+  const borrower = app.call("books", "main", "create_user", user2inputParams)
   const result = app.call("books", "main", "request_to_borrow", {
     book_address: bookClimateAddress,
     borrower_address: borrower.address,
@@ -150,4 +124,38 @@ test('requst to borrow', (t) => {
   t.end()
 })
 
+test('get requests to borrow made by user', (t) => {
+  const borrower = app.call("books", "main", "create_user", user2inputParams)
+  const result = app.call("books", "main", "get_requests_by_user", {
+    borrower_address: borrower.address
+  })
+  t.deepEqual(result, { addresses: [ 'QmRMnPE86F4eBbTBNvJ9q9TPW5ZqoYqMzCzWc8ePQRmU7C' ] })
+  t.end()
+})
+
+test('get requests made to borrow a specific book', (t) => {
+  const result = app.call("books", "main", "get_book_requests", {
+    book_address: bookClimateAddress
+  })
+  t.deepEqual(result, { addresses: [ 'QmdXyveCzH21Xq328NyLfqGvpcS56usftuR724qvmvknJD' ] })
+  t.end()
+})
+
+test('create a loan entry', (t) => {
+  const borrower = app.call("books", "main", "create_user", user2inputParams)
+  const result = app.call("books", "main", "create_loan", { 
+    book_address: bookClimateAddress,
+    borrower_address: borrower.address
+    })
+  t.deepEqual(result, { address: 'QmWqBWdCuEnkFD53wGg8pjDnFg4BqsXKQz9bagTxYvXJyF' })
+  t.end() 
+})
+
+
+/* not implemented functionally, can we just use entry metadata stamping?
+test('get current user address', (t) => {
+  const current_user = app.call("books", "main", "get_current_user_address", {})
+  t.deepEqual(result, {address: bookshelf})
+  t.end()
+})*/
 

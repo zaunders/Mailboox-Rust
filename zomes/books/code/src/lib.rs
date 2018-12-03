@@ -11,6 +11,7 @@ extern crate holochain_core_types;
 #[macro_use]
 extern crate holochain_core_types_derive;
 extern crate boolinator;
+extern crate chrono;
 
 
 use hdk::{
@@ -50,6 +51,12 @@ struct User {
     city: String,
     country: String,
 }
+#[derive(Serialize, Deserialize, Debug, DefaultJson)]
+struct Loan {
+    book_address: Address,
+    borrower_address: Address
+}
+ //return_by should implemeted as a date variable not string
 
 define_zome! {
 
@@ -132,7 +139,7 @@ define_zome! {
             sharing: Sharing::Public,
             native_type: User,
             validation_package: || hdk::ValidationPackageDefinition::Entry,
-            validation: |collection: Collection, _ctx: hdk::ValidationData| {
+            validation: |user: User, _ctx: hdk::ValidationData| {
                 Ok(())
             },
             links: [
@@ -154,6 +161,16 @@ define_zome! {
                     }
                 )
             ]
+        ),
+        entry!(
+            name: "loan",
+            description: "a book that is borrowed",
+            sharing: Sharing::Public,
+            native_type: Loan,
+            validation_package: || hdk::ValidationPackageDefinition::Entry,
+            validation: |loan: Loan, _ctx: hdk::ValidationData| {
+                Ok(())
+            }
         )
     ]
 
@@ -181,13 +198,6 @@ define_zome! {
                 outputs: |result: JsonString|,
                 handler: handle_create_user
             }
-            /* depreciated, owner now in book
-            link_book_to_owner: {
-                inputs: |book_address: Address, owner_address: Address|,
-                outputs: |result: JsonString|,
-                handler: handle_link_book_to_owner
-            }
-            */
             get_book: {
                 inputs: |address: Address|,
                 outputs: |result: JsonString|,
@@ -196,7 +206,7 @@ define_zome! {
             get_user_data: {
                 inputs: |address: Address|,
                 outputs: |result: JsonString|,
-                handler: handle_get_book
+                handler: handle_get_user_data
             }
             add_book_to_collection: {
                 inputs: |book_address: Address, collection_address: Address|,
@@ -224,10 +234,25 @@ define_zome! {
                 outputs: |result: JsonString|,
                 handler: handle_get_owners
             }
-             request_to_borrow: {
+            request_to_borrow: {
                 inputs: |borrower_address: Address, book_address: Address|,
                 outputs: |result: JsonString|,
                 handler: handle_request_to_borrow
+            }
+            get_requests_by_user: {
+                inputs: |borrower_address: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_get_requests_by_user
+            }
+            get_book_requests: {
+                inputs: |book_address: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_get_book_requests
+            }
+            create_loan: {
+                inputs: |book_address: Address, borrower_address: Address|,
+                outputs: |result: JsonString|,
+                handler: handle_create_loan
             }
             /*
             get_current_user_address: {
@@ -236,12 +261,6 @@ define_zome! {
 				handler: handle_get_current_user_address
             }*/
             /*
-           
-            accept_request_to_borrow: {
-                inputs: |**: **|,
-                outputs: |result: JsonString|,
-                handler: handle_accept_request_to_borrow
-            }
             mark_book_returned: {
                 inputs: |**: **|,
                 outputs: |result: JsonString|,
@@ -266,6 +285,15 @@ fn handle_create_book(name: String, author: String, genre: String, blurb: String
     }
 }
 
+fn handle_create_loan(book_address: Address, borrower_address: Address) -> JsonString {
+    let maybe_added = Entry::new(EntryType::App("loan".into()), Loan {
+        book_address, borrower_address
+    });
+    match hdk::commit_entry(&maybe_added) {
+        Ok(address) => json!({"address": address}).into(),
+        Err(hdk_err) => hdk_err.into()
+    }
+}
 
 fn handle_create_collection(name: String) -> JsonString {
         let maybe_added = Entry::new(EntryType::App("collection".into()), Collection {
@@ -320,19 +348,7 @@ fn handle_add_book_to_collection(book_address: Address, collection_address: Addr
         (Err(err1), Ok(_)) => err1.into()
     }
 }
-/*depreciated, owner now in book
-fn handle_link_book_to_owner(book_address: Address, owner_address: Address) -> JsonString {
-    match (
-        hdk::link_entries(&book_address, &owner_address, "owned by"),
-	    hdk::link_entries(&owner_address, &book_address, "owns")
-    ) {
-        (Ok(_result),Ok(_result2)) => json!({"success": true}).into(),
-        (Err(err1), Err(_)) => err1.into(),
-		(Ok(_), Err(err2)) => err2.into(),
-        (Err(err1), Ok(_)) => err1.into()
-    }
-}
-*/
+
 fn handle_get_books_in_collection(collection_address: Address, tag: String) -> JsonString {
     match hdk::get_links(&collection_address, tag)
     {
@@ -365,14 +381,31 @@ fn handle_get_owners(book_address: Address, tag: String) -> JsonString {
     }
 }
 
+//should be base: book, target: user, tag: "book requested by" and vice versa, why is this the other way around?
 fn handle_request_to_borrow(book_address: Address, borrower_address: Address) -> JsonString {
         match (
-        hdk::link_entries(&book_address, &borrower_address, "book requested by"),
-	    hdk::link_entries(&borrower_address, &book_address, "requests book")
+        hdk::link_entries(&book_address, &borrower_address, "requests book"),
+	    hdk::link_entries(&borrower_address, &book_address, "book requested by")
     ) {
         (Ok(_result),Ok(_result2)) => json!({"success": true}).into(),
         (Err(err1), Err(_)) => err1.into(),
 		(Ok(_), Err(err2)) => err2.into(),
         (Err(err1), Ok(_)) => err1.into()
+    }
+}
+
+fn handle_get_requests_by_user(borrower_address: Address) -> JsonString {
+        match hdk::get_links(&borrower_address, "requests book")
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into()
+    }
+}
+
+fn handle_get_book_requests(book_address: Address) -> JsonString {
+        match hdk::get_links(&book_address, "book requested by")
+    {
+        Ok(result) => result.into(),
+        Err(hdk_error) => hdk_error.into()
     }
 }
