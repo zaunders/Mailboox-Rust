@@ -145,9 +145,10 @@ test('create a loan entry', (t) => {
   const borrower = app.call("books", "main", "create_user", user2inputParams)
   const result = app.call("books", "main", "create_loan", { 
     book_address: bookClimateAddress,
-    borrower_address: borrower.address
+    borrower_address: borrower.address,
+    return_by: "30 jan 2019"
     })
-  t.deepEqual(result, { address: 'QmWqBWdCuEnkFD53wGg8pjDnFg4BqsXKQz9bagTxYvXJyF' })
+  t.deepEqual(result, { address: 'QmUF5wBm4BxG3QZw9t1Shk1zFiUdorq6QxXsL4dHX3KTSQ' })
   t.end() 
 })
 

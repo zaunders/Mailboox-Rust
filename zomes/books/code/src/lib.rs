@@ -54,7 +54,8 @@ struct User {
 #[derive(Serialize, Deserialize, Debug, DefaultJson)]
 struct Loan {
     book_address: Address,
-    borrower_address: Address
+    borrower_address: Address,
+    return_by: String
 }
  //return_by should implemeted as a date variable not string
 
@@ -250,7 +251,7 @@ define_zome! {
                 handler: handle_get_book_requests
             }
             create_loan: {
-                inputs: |book_address: Address, borrower_address: Address|,
+                inputs: |book_address: Address, borrower_address: Address, return_by: String|,
                 outputs: |result: JsonString|,
                 handler: handle_create_loan
             }
@@ -285,9 +286,9 @@ fn handle_create_book(name: String, author: String, genre: String, blurb: String
     }
 }
 
-fn handle_create_loan(book_address: Address, borrower_address: Address) -> JsonString {
+fn handle_create_loan(book_address: Address, borrower_address: Address, return_by: String) -> JsonString {
     let maybe_added = Entry::new(EntryType::App("loan".into()), Loan {
-        book_address, borrower_address
+        book_address, borrower_address, return_by
     });
     match hdk::commit_entry(&maybe_added) {
         Ok(address) => json!({"address": address}).into(),
