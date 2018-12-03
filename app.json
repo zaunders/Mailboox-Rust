@@ -1,9 +1,9 @@
 {
   "name": "MailBoox",
-  "description": "A distributed liberary, facilitated by your personal mailbox.",
+  "description": "A distributed liberary, facilitated by your mailbox.",
   "authors": [
     {
-      "identifier": "Viktor <viktor@rekobyn.se>",
+      "identifier": "Viktor Zaunders <viktor@rekobyn.se>",
       "public_key_source": "",
       "signature": ""
     }
