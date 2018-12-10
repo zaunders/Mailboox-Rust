@@ -184,6 +184,11 @@ define_zome! {
 				outputs: |result: JsonString|,
 				handler: handle_init
 			}
+            get_my_address: {
+                inputs: | |,
+                outputs: |result: JsonString|,
+                handler: handle_get_my_address
+            }
             create_book: {
                 inputs: |name: String, author: String, genre: String, blurb: String, book_owner: Address, shelf_address: Address|,
                 outputs: |result: JsonString|,
@@ -256,12 +261,6 @@ define_zome! {
                 handler: handle_create_loan
             }
             /*
-            get_current_user_address: {
-				inputs: | |,
-				outputs: |result: JsonString|,
-				handler: handle_get_current_user_address
-            }*/
-            /*
             mark_book_returned: {
                 inputs: |**: **|,
                 outputs: |result: JsonString|,
@@ -333,10 +332,11 @@ fn handle_get_user_data(address: Address) -> JsonString {
         Err(hdk_err) => hdk_err.into()
     }
  }
-/* how do I get current user address?
-fn handle_get_current_user_address() -> JsonString {
-    json!({address: &AGENT_ADDRESS}).into()
-}*/
+
+
+fn handle_get_my_address() -> JsonString {
+    AGENT_ADDRESS.clone().into()
+}
 
 fn handle_add_book_to_collection(book_address: Address, collection_address: Address) -> JsonString {
     match (
