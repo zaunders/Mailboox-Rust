@@ -37,6 +37,12 @@ test('initialize application', (t) => {
   t.end()
 })
 
+test('get my address', (t) => {
+  const result = app.call("books", "main", "get_my_address", {})
+  t.deepEqual(result, "QmeQPvoUwXXskAJtyBUNPX7ks8MoazmcSvKnvtYTVrBGNM")
+  t.end()
+})
+
 test('create a user', (t) => {
   const result = app.call("books", "main", "create_user", user1inputParams)
   t.deepEqual(result, {address: viktorAddress})

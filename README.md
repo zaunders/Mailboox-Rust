@@ -8,6 +8,11 @@ This application uses the Holochain distributed data storage engine as backend. 
 
 In order to run the application (*not working yet!*) you will need to install Holochain on your machine. Find more information on this at https://github.com/holochain/holochain-rust
 
+## Running for the UI
+`hc run --port 3400 --package`
+
+make sure to stop it and restart if you change the files
+
 ## Implementable features
 - [ ] Lending time-outs (Maybe default at 2 months but editable on accepting request)
 - [ ] Making borrowing history of the borrower visible to the owner of a book that is requested (return in time reputation)
